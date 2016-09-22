@@ -49,6 +49,7 @@ void intHandler(int sig) {
 		char* command = vecComms.vector[i];
 		printf("%i: %s\n", i + 1, command);
 	}
+	printf("\nsh> ");
 	signal(sig, intHandler);
 }
 
@@ -77,6 +78,17 @@ int main(int argc, const char* argv[]) {
 			c = getchar();
 		}
 
+		if (input[0] == '\xFF') {
+			int size = sizeof(input) / sizeof(char);
+			for (int i = 0; i < size - 1; i++) {
+				if (input[i] != '\0') {
+					input[i] = input[i + 1];
+				}
+				else {
+					break;
+				}
+			}
+		}
 		char inputSplit[sizeof(input) * sizeof(char)];
 		strcpy(inputSplit, input);
 
@@ -85,12 +97,9 @@ int main(int argc, const char* argv[]) {
 		argPtr = strtok(inputSplit, " ");
 		while (argPtr != NULL && index < MAX_ARGS - 1)
 		{
-			//if not the Ctrl + C
-			if (strcmp(argPtr, "^C") != 0) {
-				cArgs[argIndex] = argPtr;
-				argPtr = strtok(NULL, " ");
-				argIndex++;
-			}
+			cArgs[argIndex] = argPtr;
+			argPtr = strtok(NULL, " ");
+			argIndex++;
 		}
 		cArgs[argIndex] = NULL;	//for end of arguments
 
@@ -106,6 +115,8 @@ int main(int argc, const char* argv[]) {
 				break;
 			}
 		}
+
+
 
 		insertVector(&vecComms, input);
 
