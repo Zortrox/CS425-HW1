@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <ctype.h>
 
 #define MAX_ARGS 20
 
@@ -62,16 +63,33 @@ void parseInput(char* input, char* inputSplit, char* cArgs[MAX_ARGS], bool* bRun
 
 	if (!original) goodInput = false;
 
-	//if the input captured the Crtl+C signal, remove and shift string
-	if (input[0] == '\xFF') {
-		int size = sizeof(input) / sizeof(char);
-		for (int i = 0; i < size - 1; i++) {
-			if (input[i] != '\0') {
-				input[i] = input[i + 1];
-			}
-			else {
-				break;
-			}
+
+
+	//remove Ctrl+C and whitepace at beginning
+	
+	while (input[0] == '\xFF' || isspace(input[0])) {
+		for (int i = 0; input[i]; i++) {
+			input[i] = input[i + 1];
+		}
+	}
+
+	//get end character
+	int strEnd = 0;
+	for (int i = 0; input[i]; i++) {
+		strEnd = i;
+	}
+	//remove whitespace from end
+	for (int i = strEnd; i >= 0; i--) {
+		if (isspace(input[i])) {
+			input[i] = '\0';
+		}
+		//check to run process concurrently
+		else if (input[i] == '&') {
+			*bRunConcurr = true;
+			input[i] = '\0';
+		}
+		else {
+			break;
 		}
 	}
 
@@ -88,22 +106,7 @@ void parseInput(char* input, char* inputSplit, char* cArgs[MAX_ARGS], bool* bRun
 	}
 	cArgs[argIndex] = NULL;	//for end of arguments
 
-	if (isHistoryComm(cArgs)) goodInput = false;
-
-	//determine if command will run concurrently
-	//then remove from arguments
-	for (int i = 0; i < MAX_ARGS; i++) {
-		if (cArgs[i] == NULL) {
-			if (i > 0 && strcmp(cArgs[i-1], "&") == 0) {
-				*bRunConcurr = true;
-				cArgs[i-1] = NULL;
-			}
-			else if (i == 0) {
-				goodInput = false;
-			}
-			break;
-		}
-	}
+	if (isHistoryComm(cArgs) || cArgs[0] == NULL) goodInput = false;
 
 	if (goodInput) {
 		insertVector(&vecComms, input);
@@ -122,8 +125,8 @@ int main(int argc, const char* argv[]) {
 
 		char c;
 		int index = 0;
+		fflush(stdout);
 		printf("sh> ");
-		fflush(stdin);
 		while ((c = getchar()) != '\n') {
 			int length = sizeof(input) / sizeof(input[0]) - 1;	//save 1 for ending character
 			if (index < length) {
@@ -154,19 +157,35 @@ int main(int argc, const char* argv[]) {
 			}
 		}
 
-		int pid = fork();
-		//child
-		if (pid == 0) {
+		//if command not empty
+		if (cArgs[0] != NULL) {
+			//convert first argument to lower case for testing
+			for (int i = 0; cArgs[0][i]; i++) {
+				cArgs[0][i] = tolower(cArgs[0][i]);
+			}
 
-			execvp(cArgs[0], cArgs);
-		}
-		//parent
-		else if (pid > 0 && !bRunConcurr) {
-			wait(0);
-		}
-		//error
-		else if (pid < 0) {
-			printf("Fork error");
+			//if command is exit
+			if (strcmp(cArgs[0], "exit") == 0) {
+				bKeepGoing = false;
+			}
+			else {
+				int pid = fork();
+				//child
+				if (pid == 0) {
+					execvp(cArgs[0], cArgs);
+					
+					exit(0);
+				}
+				//parent
+				else if (pid > 0 && !bRunConcurr) {
+					wait(0);
+					wait(0);
+				}
+				//error
+				else if (pid < 0) {
+					printf("Fork error");
+				}
+			}
 		}
 	}
 
