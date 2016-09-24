@@ -178,8 +178,8 @@ int main(int argc, const char* argv[]) {
 				}
 				//parent
 				else if (pid > 0 && !bRunConcurr) {
-					wait(0);
-					wait(0);
+					int status = 0;
+					waitpid(pid, &status, 0);
 				}
 				//error
 				else if (pid < 0) {
