@@ -1,3 +1,9 @@
+/*
+Matthew Clark
+---
+Console Shell Program
+*/
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -9,18 +15,21 @@
 
 #define MAX_ARGS 20
 
+//variable-sized array
 typedef struct {
 	char** vector;
 	size_t size;
 	size_t maxSize;
 } Vector;
 
+//creation
 void initVector(volatile Vector *vec) {
 	vec->vector = (char**) malloc(10 * sizeof(char*));
 	vec->size = 0;
 	vec->maxSize = 10;
 }
 
+//add to vector
 void insertVector(volatile Vector *vec, char* str) {
 	if (vec->size == vec->maxSize) {
 		vec->maxSize += 10;
@@ -31,6 +40,7 @@ void insertVector(volatile Vector *vec, char* str) {
 	vec->size++;
 }
 
+//delete vector
 void freeVector(volatile Vector *vec) {
 	for (int i = 0; i < vec->size; i++) {
 		free(vec->vector[i]);
@@ -41,6 +51,7 @@ void freeVector(volatile Vector *vec) {
 	vec->size = vec->maxSize = 0;
 }
 
+//command vector & interrupt handler to output commands
 static volatile Vector vecComms;
 void intHandler(int sig) {
 	signal(sig, SIG_IGN);
@@ -54,19 +65,16 @@ void intHandler(int sig) {
 	signal(sig, intHandler);
 }
 
+//determine if the command entered is used to run a previous command
 bool isHistoryComm(char* cArgs[MAX_ARGS]) {
 	return (cArgs[0] != NULL && strcmp(cArgs[0], "r") == 0);
 }
 
-void parseInput(char* input, char* inputSplit, char* cArgs[MAX_ARGS], bool* bRunConcurr, bool original) {
+//break the input into individual indices and determine if the command needs to run concurrently
+void parseInput(char* input, char* inputSplit, char* cArgs[MAX_ARGS], bool* bRunConcurr) {
 	bool goodInput = true;
 
-	if (!original) goodInput = false;
-
-
-
 	//remove Ctrl+C and whitepace at beginning
-	
 	while (input[0] == '\xFF' || isspace(input[0])) {
 		for (int i = 0; input[i]; i++) {
 			input[i] = input[i + 1];
@@ -93,8 +101,8 @@ void parseInput(char* input, char* inputSplit, char* cArgs[MAX_ARGS], bool* bRun
 		}
 	}
 
+	//keep input intact and split the input string based on spaces
 	strcpy(inputSplit, input);
-
 	int argIndex = 0;
 	char* argPtr;
 	argPtr = strtok(inputSplit, " ");
@@ -106,8 +114,10 @@ void parseInput(char* input, char* inputSplit, char* cArgs[MAX_ARGS], bool* bRun
 	}
 	cArgs[argIndex] = NULL;	//for end of arguments
 
+	//determine if the input is to be inserted into the command array
 	if (isHistoryComm(cArgs) || cArgs[0] == NULL) goodInput = false;
 
+	//insert into command array if the input is good
 	if (goodInput) {
 		insertVector(&vecComms, input);
 	}
@@ -115,8 +125,10 @@ void parseInput(char* input, char* inputSplit, char* cArgs[MAX_ARGS], bool* bRun
 
 int main(int argc, const char* argv[]) {
 
+	//catch interrupts
 	signal(SIGINT, intHandler);
 
+	//start user input loop
 	initVector(&vecComms);
 	bool bKeepGoing = true;
 	while (bKeepGoing) {
@@ -141,17 +153,34 @@ int main(int argc, const char* argv[]) {
 		
 		bool bRunConcurr = false;
 		char inputSplit[sizeof(input) * sizeof(char)];
-		parseInput(input, inputSplit, cArgs, &bRunConcurr, true);
+		parseInput(input, inputSplit, cArgs, &bRunConcurr);
 
-		//run a previous command
+		//run a previous command by number of command
 		if (isHistoryComm(cArgs)) {
-			long num = strtol(cArgs[1], NULL, 10);
+			long num = 0;
+			if (cArgs[1] == NULL) {
+				num = vecComms.size;
+			} else if (cArgs[1][0] >= 48 && cArgs[1][0] <= 57) {	//if the function is numeric
+				num = strtol(cArgs[1], NULL, 10);
+			} else {	//the function goes by letter
+				//go through command vector in reverse and get the first
+				//element that starts with the inputted command
+				for (int i = vecComms.size; i > 0; i--) {
+					if (vecComms.vector[i - 1][0] == cArgs[1][0]) {
+						num = i;
+						break;	
+					}
+				}
+			}
+
+			//make sure num is in array bounds
 			if (num <= vecComms.size && num > 0) {
 				char* comm = vecComms.vector[num - 1];
 
 				char commSplit[sizeof(input) * sizeof(char)];
-				parseInput(comm, commSplit, cArgs, &bRunConcurr, false);
+				parseInput(comm, commSplit, cArgs, &bRunConcurr);
 			}
+			//otherwise print that command wasn't found
 			else {
 				printf("Command not found\n");
 			}
