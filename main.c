@@ -201,6 +201,7 @@ int main(int argc, const char* argv[]) {
 				int pid = fork();
 				//child
 				if (pid == 0) {
+					int pidc = getpid();
 					execvp(cArgs[0], cArgs);
 					
 					exit(0);
@@ -217,6 +218,8 @@ int main(int argc, const char* argv[]) {
 			}
 		}
 	}
+
+	waitpid(-1, NULL, 0);
 
 	return 0;
 }
