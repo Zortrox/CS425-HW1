@@ -220,6 +220,9 @@ int main(int argc, const char* argv[]) {
 		}
 	}
 
+	//free the vector's memory
+	freeVector(&vecComms);
+
 	//wait for all child threads before exiting
 	waitpid(-1, NULL, 0);
 
