@@ -24,7 +24,7 @@ typedef struct {
 
 //creation
 void initVector(volatile Vector *vec) {
-	vec->vector = (char**) malloc(10 * sizeof(char*));
+	vec->vector = (char**)malloc(10 * sizeof(char*));
 	vec->size = 0;
 	vec->maxSize = 10;
 }
@@ -35,7 +35,7 @@ void insertVector(volatile Vector *vec, char* str) {
 		vec->maxSize += 10;
 		vec->vector = (char**)realloc(vec->vector, vec->maxSize * sizeof(char*));
 	}
-	vec->vector[vec->size] = (char*) malloc(sizeof(str));
+	vec->vector[vec->size] = (char*)malloc(sizeof(str));
 	strcpy(vec->vector[vec->size], str);
 	vec->size++;
 }
@@ -114,7 +114,7 @@ void parseInput(char* input, char* inputSplit, char* cArgs[MAX_ARGS], bool* bRun
 	}
 	cArgs[argIndex] = NULL;	//for end of arguments
 
-	//determine if the input is to be inserted into the command array
+							//determine if the input is to be inserted into the command array
 	if (isHistoryComm(cArgs) || cArgs[0] == NULL) goodInput = false;
 
 	//insert into command array if the input is good
@@ -150,7 +150,7 @@ int main(int argc, const char* argv[]) {
 		while (c != '\n' && c != EOF) {
 			c = getchar();
 		}
-		
+
 		bool bRunConcurr = false;
 		char inputSplit[sizeof(input) * sizeof(char)];
 		parseInput(input, inputSplit, cArgs, &bRunConcurr);
@@ -160,15 +160,17 @@ int main(int argc, const char* argv[]) {
 			long num = 0;
 			if (cArgs[1] == NULL) {
 				num = vecComms.size;
-			} else if (cArgs[1][0] >= 48 && cArgs[1][0] <= 57) {	//if the function is numeric
+			}
+			else if (cArgs[1][0] >= 48 && cArgs[1][0] <= 57) {	//if the function is numeric
 				num = strtol(cArgs[1], NULL, 10);
-			} else {	//the function goes by letter
-				//go through command vector in reverse and get the first
-				//element that starts with the inputted command
+			}
+			else {	//the function goes by letter
+					//go through command vector in reverse and get the first
+					//element that starts with the inputted command
 				for (int i = vecComms.size; i > 0; i--) {
 					if (vecComms.vector[i - 1][0] == cArgs[1][0]) {
 						num = i;
-						break;	
+						break;
 					}
 				}
 			}
@@ -201,9 +203,8 @@ int main(int argc, const char* argv[]) {
 				int pid = fork();
 				//child
 				if (pid == 0) {
-					int pidc = getpid();
 					execvp(cArgs[0], cArgs);
-					
+
 					exit(0);
 				}
 				//parent
@@ -219,6 +220,7 @@ int main(int argc, const char* argv[]) {
 		}
 	}
 
+	//wait for all child threads before exiting
 	waitpid(-1, NULL, 0);
 
 	return 0;
